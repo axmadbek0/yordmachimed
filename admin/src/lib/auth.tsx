@@ -39,11 +39,38 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     passwordStr: string
   ): Promise<boolean> => {
     setIsLoading(true);
-    
-    // Simulate API call delay
-    await new Promise((resolve) => setTimeout(resolve, 800));
 
-    // Super-admin auth (no schoolNumber needed)
+    try {
+      if (role === 'super_admin') {
+        const res = await fetch('/api/admin/auth/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email: loginStr, login: loginStr, password: passwordStr }),
+        });
+
+        if (res.ok) {
+          const json = await res.json();
+          if (json.success && json.data?.token) {
+            localStorage.setItem('yordamchi_admin_token', json.data.token);
+            const superAdminUser: AuthUser = {
+              id: json.data.user.id,
+              role: 'super_admin',
+              schoolNumber: 0,
+              login: json.data.user.email || json.data.user.login,
+              displayName: json.data.user.displayName || 'Super Admin',
+            };
+            setUser(superAdminUser);
+            localStorage.setItem('yordamchi_auth_user', JSON.stringify(superAdminUser));
+            setIsLoading(false);
+            return true;
+          }
+        }
+      }
+    } catch (err) {
+      console.warn('Backend login connection failed, checking fallback:', err);
+    }
+
+    // Fallback for offline development
     if (role === 'super_admin' && loginStr === 'admin@yordamchi.med' && passwordStr === 'superadmin123') {
       const superAdminUser: AuthUser = {
         id: 'superadmin-1',
@@ -65,6 +92,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const logout = () => {
     setUser(null);
     localStorage.removeItem('yordamchi_auth_user');
+    localStorage.removeItem('yordamchi_admin_token');
   };
 
   return (

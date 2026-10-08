@@ -16,6 +16,19 @@ model School {
   phone        String?
   description  String?
   photos       String?        // JSON string array e.g. '["photo1.jpg"]'
+  photoUrls    String?        // JSON string array
+  status       String         @default("ACTIVE") // PENDING, ACTIVE, SUSPENDED
+  district     String?
+  classCount   Int            @default(0)
+  lat          Float?
+  lng          Float?
+  workingHours String?
+  foundedYear  Int?
+  isVerified   Boolean        @default(false)
+  licenseNumber String?
+  ageRangeMin  Int?
+  ageRangeMax  Int?
+  faqItems     String?        // JSON string array of { question, answer }
   created_at   DateTime       @default(now())
   updated_at   DateTime       @updatedAt
 
@@ -23,6 +36,8 @@ model School {
   students     Student[]
   cameras      Camera[]
   announcements Announcement[]
+  food_analyses FoodAnalysis[]
+  subscription Subscription?
 }
 
 model User {
@@ -34,6 +49,7 @@ model User {
   phone                String?
   class_name           String?        // For teachers: e.g. "4-A sinf"
   must_change_password Boolean        @default(false)
+  status               String         @default("active") // active, blocked
   last_login_at        DateTime?
   created_at           DateTime       @default(now())
   updated_at           DateTime       @updatedAt
@@ -90,14 +106,45 @@ model DailyLog {
 }
 
 model Camera {
-  id           String    @id @default(uuid())
-  school_id    String
-  school       School    @relation(fields: [school_id], references: [id])
-  type         String    // DORMITORY, KITCHEN
-  sector_label String    // e.g. "1-yotoqxona (O'g'il bolalar)", "Oshxona zali"
-  stream_url   String?
-  is_active    Boolean   @default(true)
-  created_at   DateTime  @default(now())
+  id                  String         @id @default(uuid())
+  school_id           String
+  school              School         @relation(fields: [school_id], references: [id])
+  type                String         // DORMITORY, KITCHEN
+  sector_label        String         // e.g. "1-yotoqxona (O'g'il bolalar)", "Oshxona zali"
+  stream_url          String?
+  is_active           Boolean        @default(true)
+  last_capture_at     DateTime?
+  last_capture_status String         @default("PENDING") // PENDING, SUCCESS, CAMERA_OFFLINE, CAPTURE_FAILED
+  created_at          DateTime       @default(now())
+
+  food_analyses       FoodAnalysis[]
+}
+
+model FoodAnalysis {
+  id             String    @id @default(uuid())
+  camera_id      String
+  camera         Camera    @relation(fields: [camera_id], references: [id], onDelete: Cascade)
+  school_id      String
+  school         School    @relation(fields: [school_id], references: [id], onDelete: Cascade)
+
+  frame_urls     String?   // JSON array e.g. '["/tmp/frame.jpg"]'
+  status         String    @default("PENDING") // PENDING, PROCESSING, COMPLETED, FAILED
+
+  detected_foods String?   // JSON string of DetectedFood[]
+  total_calories Int?
+  health_score   String?   // BALANCED, NEEDS_ATTENTION, UNKNOWN
+  ai_note        String?
+
+  raw_ai_response String?  // JSON string
+  error_message   String?
+  retry_count     Int      @default(0)
+
+  captured_at    DateTime  @default(now())
+  analyzed_at    DateTime?
+  created_at     DateTime  @default(now())
+
+  @@index([school_id, status])
+  @@index([camera_id])
 }
 
 model Announcement {
@@ -132,3 +179,88 @@ model Message {
   chat_id     String
   chat        Chat       @relation(fields: [chat_id], references: [id])
 }
+
+model SupportInquiry {
+  id           String    @id @default(uuid())
+  session_id   String
+  sender_name  String?
+  sender_phone String?
+  role         String?
+  message      String
+  admin_reply  String?
+  replied_at   DateTime?
+  replied_by   String?
+  status       String    @default("pending")
+  created_at   DateTime  @default(now())
+  updated_at   DateTime  @updatedAt
+}
+
+model SuperAdmin {
+  id           String    @id @default(uuid())
+  login        String    @unique
+  email        String?   @unique
+  passwordHash String
+  displayName  String
+  createdAt    DateTime  @default(now())
+  lastLoginAt  DateTime?
+}
+
+model Subscription {
+  id            String    @id @default(uuid())
+  schoolId      String    @unique
+  school        School    @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  status        String    @default("TRIAL") // TRIAL, ACTIVE, OVERDUE, CANCELLED
+  plan          String    @default("Standart")
+  monthlyAmount Int       @default(1500000)
+  nextBillingAt DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+}
+
+model UserPayment {
+  id               String    @id @default(uuid())
+  transactionId    String    @unique
+  userName         String
+  userRole         String    // parent, teacher, school_admin
+  userPhone        String
+  studentName      String?
+  schoolNumber     Int?
+  planName         String
+  amount           Int
+  provider         String    // Click, Payme, Uzum Pay, Karta (Uzcard/Humo)
+  status           String    @default("completed") // completed, pending, overdue, refunded
+  paymentDate      DateTime  @default(now())
+  expiryDate       DateTime
+  cardNumberMasked String?
+  createdAt        DateTime  @default(now())
+}
+
+model Inquiry {
+  id          String    @id @default(uuid())
+  type        String    @default("GENERAL") // NEW_SCHOOL_REQUEST, SUPPORT, GENERAL
+  fromName    String
+  fromContact String
+  schoolName  String?
+  message     String
+  status      String    @default("NEW") // NEW, IN_PROGRESS, RESOLVED
+  adminReply  String?
+  createdAt   DateTime  @default(now())
+  resolvedAt  DateTime?
+}
+
+model AuditLog {
+  id         String    @id @default(uuid())
+  adminId    String
+  action     String    // "SCHOOL_CREATED", "TEACHER_CREDENTIALS_RESET", etc.
+  targetType String    // "School" | "Teacher" | "SchoolAdmin" | "SiteContent" | "User"
+  targetId   String
+  metadata   String?   // JSON string
+  createdAt  DateTime  @default(now())
+}
+
+model SiteContent {
+  key       String   @id
+  value     String
+  updatedAt DateTime @updatedAt
+}
+

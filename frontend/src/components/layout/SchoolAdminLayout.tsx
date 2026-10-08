@@ -1,9 +1,10 @@
 /**
- * @license
- * SPDX-License-Identifier: Apache-2.0
+ * SchoolAdminLayout — Maktab admini kabineti shell
+ * Desktopda: chap tomonlama Sidebar
+ * Mobilda: Mobil ilova bilan bir xil pastki Tab Bar
  */
 
-import { Outlet, Link, useNavigate } from 'react-router-dom';
+import { Outlet, useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard,
   Users,
@@ -16,7 +17,7 @@ import {
   Shield,
 } from 'lucide-react';
 import { useAuth } from '../../lib/auth';
-import { Sidebar, MobileNavTabs, type NavItem } from './Sidebar';
+import { Sidebar, BottomNav, type NavItem } from './Sidebar';
 
 export const schoolAdminNavItems: NavItem[] = [
   {
@@ -44,22 +45,16 @@ export const schoolAdminNavItems: NavItem[] = [
     path: '/school-admin/reports',
   },
   {
-    label: 'Maktab profili',
-    shortLabel: 'Maktab',
-    icon: School,
-    path: '/school-admin/profile',
-  },
-  {
     label: 'Kamera sozlamalari',
     shortLabel: 'Kameralar',
     icon: Video,
     path: '/school-admin/cameras',
   },
   {
-    label: 'Bildirishnoma yuborish',
-    shortLabel: 'Xabarlar',
-    icon: Megaphone,
-    path: '/school-admin/announcements',
+    label: 'Maktab profili',
+    shortLabel: 'Maktab',
+    icon: School,
+    path: '/school-admin/profile',
   },
 ];
 
@@ -71,6 +66,7 @@ export function SchoolAdminLayout() {
 
   return (
     <div className="min-h-screen bg-bg flex flex-col md:flex-row font-sans text-ink">
+      {/* Desktop Chap Sidebar */}
       <Sidebar
         items={schoolAdminNavItems}
         logoSubtitle="MAKTAB ADMINI"
@@ -98,7 +94,7 @@ export function SchoolAdminLayout() {
             <button
               type="button"
               onClick={logout}
-              className="w-full flex items-center justify-center gap-2 py-2.5 border-2 border-coral/30 text-coral hover:bg-coral/10 hover:border-coral rounded-xl text-xs font-bold transition-all cursor-pointer"
+              className="w-full flex items-center justify-center gap-2 min-h-[44px] py-2.5 border-2 border-coral/30 text-coral hover:bg-coral/10 hover:border-coral rounded-xl text-xs font-bold transition-all cursor-pointer"
             >
               <LogOut className="w-3.5 h-3.5" /> Chiqish
             </button>
@@ -106,10 +102,11 @@ export function SchoolAdminLayout() {
         }
       />
 
+      {/* Asosiy Ish Maydoni */}
       <div className="flex-1 flex flex-col min-w-0 min-h-screen">
-        {/* Mobile Header */}
-        <header className="md:hidden bg-white border-b border-primary/5 sticky top-0 z-10 shadow-sm flex items-center justify-between p-4 shrink-0">
-          <div className="flex items-center gap-2">
+        {/* Mobil Header */}
+        <header className="md:hidden bg-white/95 backdrop-blur-md border-b border-cardBlue/60 sticky top-0 z-20 shadow-xs flex items-center justify-between px-4 py-3 shrink-0">
+          <div className="flex items-center gap-2.5">
             <div className="bg-primary text-white rounded-xl p-2 shadow-sm">
               <School className="w-4 h-4" />
             </div>
@@ -125,29 +122,34 @@ export function SchoolAdminLayout() {
               <span className="text-[10px] text-muted">№{schoolNumber}-Maktab-Internat</span>
             </div>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5">
             <button
               type="button"
-              onClick={() => navigate('/school-admin/profile')}
-              className="text-primary text-xs font-bold py-1.5 px-3 hover:bg-primary/5 rounded-lg flex items-center gap-1 cursor-pointer"
+              onClick={() => navigate('/school-admin/announcements')}
+              className="text-primary p-2 min-h-[44px] min-w-[44px] flex items-center justify-center hover:bg-primary/5 rounded-xl transition-colors cursor-pointer"
+              aria-label="Xabarlar"
             >
-              <School className="w-3.5 h-3.5" /> Maktab
+              <Megaphone className="w-5 h-5" />
             </button>
             <button
               type="button"
               onClick={logout}
-              className="text-coral text-xs font-bold py-1.5 px-3 hover:bg-coral/5 rounded-lg flex items-center gap-1 cursor-pointer"
+              className="text-coral p-2 min-h-[44px] min-w-[44px] flex items-center justify-center hover:bg-coral/5 rounded-xl transition-colors cursor-pointer"
+              aria-label="Chiqish"
             >
-              <LogOut className="w-3.5 h-3.5" /> Chiqish
+              <LogOut className="w-5 h-5" />
             </button>
           </div>
         </header>
 
-        <main className="flex-1 flex flex-col p-4 sm:p-8 overflow-y-auto max-w-7xl mx-auto w-full">
-          <MobileNavTabs items={schoolAdminNavItems} />
+        {/* Asosiy Sahifa Kontenti (Mobilda pastki tab bar ustida bo'lishi uchun pb-24) */}
+        <main className="flex-1 flex flex-col p-4 sm:p-8 pb-24 md:pb-8 overflow-y-auto max-w-7xl mx-auto w-full">
           <Outlet />
         </main>
       </div>
+
+      {/* Mobil Pastki Tab Bar */}
+      <BottomNav items={schoolAdminNavItems} />
     </div>
   );
 }

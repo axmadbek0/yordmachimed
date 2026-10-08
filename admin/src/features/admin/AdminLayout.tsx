@@ -14,11 +14,13 @@ import {
   LogOut,
   Shield,
   Heart,
+  MessageSquare,
 } from 'lucide-react';
 import { motion } from 'motion/react';
 
 const NAV_ITEMS = [
   { to: '/admin/dashboard', icon: LayoutDashboard, label: 'Boshqaruv paneli' },
+  { to: '/admin/inquiries', icon: MessageSquare, label: 'Murojaatlar / Savollar' },
   { to: '/admin/schools', icon: School, label: 'Maktablar' },
   { to: '/admin/users', icon: Users, label: 'Foydalanuvchilar' },
   { to: '/admin/analytics', icon: BarChart3, label: 'Tahlil va hisobotlar' },

@@ -545,6 +545,70 @@ function initAdminDB() {
   if (!localStorage.getItem(KEYS.userPayments)) {
     localStorage.setItem(KEYS.userPayments, JSON.stringify(SEED_USER_PAYMENTS));
   }
+
+  // Auto-sync with backend in background if token exists
+  if (typeof window !== 'undefined' && localStorage.getItem('yordamchi_admin_token')) {
+    syncAdminWithBackend();
+  }
+}
+
+function getAdminHeaders(): Record<string, string> {
+  const token = typeof window !== 'undefined' ? localStorage.getItem('yordamchi_admin_token') : null;
+  return {
+    'Content-Type': 'application/json',
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+  };
+}
+
+let isSyncing = false;
+export async function syncAdminWithBackend() {
+  if (isSyncing || typeof window === 'undefined') return;
+  const token = localStorage.getItem('yordamchi_admin_token');
+  if (!token) return;
+
+  isSyncing = true;
+  try {
+    const [schoolsRes, usersRes, billingRes, settingsRes] = await Promise.all([
+      fetch('/api/admin/schools', { headers: getAdminHeaders() }),
+      fetch('/api/admin/users', { headers: getAdminHeaders() }),
+      fetch('/api/admin/billing', { headers: getAdminHeaders() }),
+      fetch('/api/admin/settings', { headers: getAdminHeaders() }),
+    ]);
+
+    if (schoolsRes.ok) {
+      const json = await schoolsRes.json();
+      if (json.success && Array.isArray(json.data) && json.data.length > 0) {
+        localStorage.setItem(KEYS.schools, JSON.stringify(json.data));
+      }
+    }
+    if (usersRes.ok) {
+      const json = await usersRes.json();
+      if (json.success && Array.isArray(json.data) && json.data.length > 0) {
+        localStorage.setItem(KEYS.teachers, JSON.stringify(json.data));
+      }
+    }
+    if (billingRes.ok) {
+      const json = await billingRes.json();
+      if (json.success && json.data) {
+        if (Array.isArray(json.data.subscriptions) && json.data.subscriptions.length > 0) {
+          localStorage.setItem(KEYS.billing, JSON.stringify(json.data.subscriptions));
+        }
+        if (Array.isArray(json.data.userPayments) && json.data.userPayments.length > 0) {
+          localStorage.setItem(KEYS.userPayments, JSON.stringify(json.data.userPayments));
+        }
+      }
+    }
+    if (settingsRes.ok) {
+      const json = await settingsRes.json();
+      if (json.success && json.data) {
+        localStorage.setItem(KEYS.settings, JSON.stringify(json.data));
+      }
+    }
+  } catch (err) {
+    console.warn('syncAdminWithBackend error:', err);
+  } finally {
+    isSyncing = false;
+  }
 }
 
 
@@ -602,6 +666,28 @@ export function addSchool(school: Omit<School, 'id' | 'createdAt' | 'teacherCoun
   teachers.push(newTeacher);
   localStorage.setItem(KEYS.teachers, JSON.stringify(teachers));
 
+  // Dispatch async creation to backend
+  if (typeof window !== 'undefined') {
+    fetch('/api/admin/schools', {
+      method: 'POST',
+      headers: getAdminHeaders(),
+      body: JSON.stringify(school),
+    }).then(async (res) => {
+      if (res.ok) {
+        const json = await res.json();
+        if (json.success && json.data?.school) {
+          // Update id from real DB if available
+          const currentSchools = getSchools();
+          const found = currentSchools.find((s) => s.number === school.number);
+          if (found) {
+            found.id = json.data.school.id;
+            localStorage.setItem(KEYS.schools, JSON.stringify(currentSchools));
+          }
+        }
+      }
+    }).catch(console.warn);
+  }
+
   return {
     school: newSchool,
     teacherLogin: creds.login,
@@ -615,6 +701,16 @@ export function updateSchool(id: string, updates: Partial<School>): School | und
   if (idx === -1) return undefined;
   schools[idx] = { ...schools[idx], ...updates };
   localStorage.setItem(KEYS.schools, JSON.stringify(schools));
+
+  // Sync update to backend
+  if (typeof window !== 'undefined') {
+    fetch(`/api/admin/schools/${id}`, {
+      method: 'PATCH',
+      headers: getAdminHeaders(),
+      body: JSON.stringify(updates),
+    }).catch(console.warn);
+  }
+
   return schools[idx];
 }
 
@@ -627,6 +723,16 @@ export function deactivateSchool(id: string): boolean {
       if (t.schoolId === id) t.status = 'blocked';
     });
     localStorage.setItem(KEYS.teachers, JSON.stringify(teachers));
+
+    // Sync status change to backend
+    if (typeof window !== 'undefined') {
+      fetch(`/api/admin/schools/${id}/status`, {
+        method: 'PATCH',
+        headers: getAdminHeaders(),
+        body: JSON.stringify({ status: 'SUSPENDED' }),
+      }).catch(console.warn);
+    }
+
     return true;
   }
   return false;
@@ -651,6 +757,15 @@ export function toggleTeacherStatus(id: string): Teacher | undefined {
   if (idx === -1) return undefined;
   teachers[idx].status = teachers[idx].status === 'active' ? 'blocked' : 'active';
   localStorage.setItem(KEYS.teachers, JSON.stringify(teachers));
+
+  // Sync to backend
+  if (typeof window !== 'undefined') {
+    fetch(`/api/admin/users/${id}/status`, {
+      method: 'PATCH',
+      headers: getAdminHeaders(),
+    }).catch(console.warn);
+  }
+
   return teachers[idx];
 }
 
@@ -658,7 +773,16 @@ export function resetTeacherCredentials(id: string): { login: string; password: 
   const teachers = getTeachers();
   const teacher = teachers.find((t) => t.id === id);
   if (!teacher) return undefined;
-  // Re-display existing credentials (in real system, would regenerate)
+
+  // Sync reset to backend
+  if (typeof window !== 'undefined') {
+    fetch(`/api/admin/users/${id}/reset-credentials`, {
+      method: 'POST',
+      headers: getAdminHeaders(),
+      body: JSON.stringify({ role: teacher.role || 'teacher' }),
+    }).catch(console.warn);
+  }
+
   return { login: teacher.login, password: teacher.password };
 }
 
@@ -876,4 +1000,13 @@ export function getAdminSettings(): AdminSettingsData {
 
 export function saveAdminSettings(settings: AdminSettingsData): void {
   localStorage.setItem(KEYS.settings, JSON.stringify(settings));
+
+  // Sync settings to backend
+  if (typeof window !== 'undefined') {
+    fetch('/api/admin/settings', {
+      method: 'PATCH',
+      headers: getAdminHeaders(),
+      body: JSON.stringify({ key: 'system.settings', value: JSON.stringify(settings) }),
+    }).catch(console.warn);
+  }
 }

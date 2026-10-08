@@ -28,4 +28,7 @@ export interface AuthRequest extends Request {
   user?: AuthUser;
   schoolId?: string;
   schoolNumber?: number;
+  adminId?: string;
 }
+
+export type SuperAdminRequest = AuthRequest;

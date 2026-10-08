@@ -3,7 +3,10 @@ import type { FoodAnalysisItem } from '../types/foodAnalysis';
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
 function getAuthHeaders(): HeadersInit {
-  const token = localStorage.getItem('yordamchi_token');
+  const token =
+    localStorage.getItem('yordamchi_auth_token') ||
+    localStorage.getItem('accessToken') ||
+    localStorage.getItem('yordamchi_token');
   return {
     'Content-Type': 'application/json',
     ...(token ? { Authorization: `Bearer ${token}` } : {}),

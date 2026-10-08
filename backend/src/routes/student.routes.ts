@@ -5,7 +5,7 @@ import {
   getOne,
   getMyChildren,
 } from '../controllers/student.controller';
-import { createDailyLog } from '../controllers/dailyLogController';
+import { createDailyLog } from '../controllers/dailyLog.controller';
 import { authenticate } from '../middlewares/auth.middleware';
 import { authorizeRoles } from '../middlewares/role.middleware';
 import { validate } from '../middlewares/validate.middleware';

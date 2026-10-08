@@ -14,6 +14,7 @@ import { AdminSchools } from './features/admin/AdminSchools';
 import { AdminSchoolProfile } from './features/admin/AdminSchoolProfile';
 import { AdminUsers } from './features/admin/AdminUsers';
 import { AdminAnalytics } from './features/admin/AdminAnalytics';
+import { AdminInquiries } from './features/admin/AdminInquiries';
 import { AdminBilling } from './features/admin/AdminBilling';
 import { AdminSettings } from './features/admin/AdminSettings';
 
@@ -58,6 +59,7 @@ export default function App() {
           >
             <Route index element={<Navigate to="/admin/dashboard" replace />} />
             <Route path="dashboard" element={<AdminDashboard />} />
+            <Route path="inquiries" element={<AdminInquiries />} />
             <Route path="schools" element={<AdminSchools />} />
             <Route path="schools/:id" element={<AdminSchoolProfile />} />
             <Route path="users" element={<AdminUsers />} />

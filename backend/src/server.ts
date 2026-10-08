@@ -20,6 +20,11 @@ import dailyLogRoutes from './routes/dailyLog.routes';
 import chatRoutes from './routes/chat.routes';
 import aiRoutes from './routes/ai.routes';
 import schoolAdminRoutes from './routes/schoolAdmin.routes';
+import supportRoutes from './routes/support.routes';
+import foodAnalysisRoutes from './routes/foodAnalysis.routes';
+import adminRoutes from './routes/admin.routes';
+import publicRoutes from './routes/public.routes';
+import { initFoodAnalysisScheduler } from './services/scheduler';
 
 // Muhim muhit o'zgaruvchilarini tekshirish
 const requiredEnvVars = ['DATABASE_URL'];
@@ -66,7 +71,7 @@ app.use(express.urlencoded({ extended: true, limit: '1mb' }));
 
 app.use('/api', apiRateLimiter);
 
-app.get('/health', (_req: Request, res: Response) => {
+app.get(['/health', '/api/health'], (_req: Request, res: Response) => {
   res.status(200).json({
     status: 'ok',
     uptime: process.uptime(),
@@ -107,6 +112,22 @@ app.use('/school-admin', schoolAdminRoutes);
 app.use('/api/school-admin', schoolAdminRoutes);
 app.use('/api/v1/school-admin', schoolAdminRoutes);
 
+app.use('/support', supportRoutes);
+app.use('/api/support', supportRoutes);
+app.use('/api/v1/support', supportRoutes);
+
+app.use('/food-analysis', foodAnalysisRoutes);
+app.use('/api/food-analysis', foodAnalysisRoutes);
+app.use('/api/v1/food-analysis', foodAnalysisRoutes);
+
+app.use('/admin', adminRoutes);
+app.use('/api/admin', adminRoutes);
+app.use('/api/v1/admin', adminRoutes);
+
+app.use('/public', publicRoutes);
+app.use('/api/public', publicRoutes);
+app.use('/api/v1/public', publicRoutes);
+
 app.use(notFoundHandler);
 app.use(errorHandler);
 
@@ -134,11 +155,12 @@ io.on('connection', (socket) => {
 
 registerProcessHandlers(httpServer, io);
 
-httpServer.listen(port, () => {
-  console.log(
-    `[server] ${isProduction ? 'production' : 'development'} rejimida http://localhost:${port}`
-  );
-  console.log(`[cors] Barcha domenlar va localhost portlari ruxsat berilgan (credentials: true)`);
-});
+if (require.main === module) {
+  httpServer.listen(port, () => {
+    console.log();
+    console.log();
+    initFoodAnalysisScheduler();
+  });
+}
 
 export { app, httpServer, io };

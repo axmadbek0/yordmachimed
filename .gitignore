@@ -13,3 +13,16 @@ yarn-error.log*
 .idea/
 .vscode/
 *.local
+
+# Android & Gradle Build Artifacts
+.gradle/
+**/android/.gradle/
+**/android/app/build/
+**/android/build/
+**/.cxx/
+**/android/app/.cxx/
+*.apk
+*.aab
+*.flat
+*.bin
+*.ninja_log

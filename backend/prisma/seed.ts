@@ -32,6 +32,21 @@ async function main() {
     },
   });
 
+  await prisma.superAdmin.upsert({
+    where: { login: 'admin@yordamchi.med' },
+    update: {
+      email: 'admin@yordamchi.med',
+      passwordHash: superAdminHash,
+      displayName: 'Bosh Administrator',
+    },
+    create: {
+      login: 'admin@yordamchi.med',
+      email: 'admin@yordamchi.med',
+      passwordHash: superAdminHash,
+      displayName: 'Bosh Administrator',
+    },
+  });
+
   // ==========================================
   // 1. 71-sonli Maktab-Internati
   // ==========================================
@@ -294,6 +309,42 @@ async function main() {
     },
   });
 
+  // Oshxona AI Tahlillari (71-Maktab)
+  const kitchenCamera71 = await prisma.camera.findFirst({
+    where: { school_id: school71.id, type: 'KITCHEN' },
+  });
+
+  if (kitchenCamera71) {
+    await prisma.foodAnalysis.deleteMany({ where: { school_id: school71.id } });
+    await prisma.foodAnalysis.create({
+      data: {
+        camera_id: kitchenCamera71.id,
+        school_id: school71.id,
+        frame_urls: JSON.stringify(['https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=800&q=80']),
+        status: 'COMPLETED',
+        detected_foods: JSON.stringify([
+          { name: 'Sabzavotli yengil mastava sho‘rva', estimatedCalories: 180, category: 'sabzavot' },
+          { name: 'Tovuq go‘shtli dimlama va grechka', estimatedCalories: 360, category: 'oqsil' },
+          { name: 'Yangi bodring va ko‘katli salat', estimatedCalories: 45, category: 'sabzavot' },
+          { name: 'Quritilgan o‘rik va olmali kompot', estimatedCalories: 75, category: 'ichimlik' },
+        ]),
+        total_calories: 660,
+        health_score: 'BALANCED',
+        ai_note: 'Bugungi tushlikda oqsil va vitaminlar mutanosibligi yuqori darajada ta\'minlangan. Taom bolalarning darsdan keyingi faolligi uchun to\'liq energiya bag\'ishlaydi.',
+        captured_at: new Date(),
+        analyzed_at: new Date(),
+      },
+    });
+
+    await prisma.camera.update({
+      where: { id: kitchenCamera71.id },
+      data: {
+        last_capture_at: new Date(),
+        last_capture_status: 'SUCCESS',
+      },
+    });
+  }
+
   // ==========================================
   // 2. 12-sonli Maktab
   // ==========================================
@@ -329,8 +380,115 @@ async function main() {
     },
   });
 
+  // ==========================================
+  // Subscriptions, Inquiries, Payments, Settings
+  // ==========================================
+  await prisma.subscription.upsert({
+    where: { schoolId: school71.id },
+    update: {
+      status: 'ACTIVE',
+      plan: 'Professional',
+      monthlyAmount: 2500000,
+      nextBillingAt: new Date(Date.now() + 15 * 24 * 60 * 60 * 1000),
+    },
+    create: {
+      schoolId: school71.id,
+      status: 'ACTIVE',
+      plan: 'Professional',
+      monthlyAmount: 2500000,
+      nextBillingAt: new Date(Date.now() + 15 * 24 * 60 * 60 * 1000),
+    },
+  });
+
+  await prisma.subscription.upsert({
+    where: { schoolId: school12.id },
+    update: {
+      status: 'ACTIVE',
+      plan: 'Standart',
+      monthlyAmount: 1500000,
+      nextBillingAt: new Date(Date.now() + 25 * 24 * 60 * 60 * 1000),
+    },
+    create: {
+      schoolId: school12.id,
+      status: 'ACTIVE',
+      plan: 'Standart',
+      monthlyAmount: 1500000,
+      nextBillingAt: new Date(Date.now() + 25 * 24 * 60 * 60 * 1000),
+    },
+  });
+
+  // Sample inquiries
+  const existingInquiry = await prisma.inquiry.findFirst();
+  if (!existingInquiry) {
+    await prisma.inquiry.createMany({
+      data: [
+        {
+          type: 'NEW_SCHOOL_REQUEST',
+          fromName: 'Rustam Karimov',
+          fromContact: '+998901112233',
+          schoolName: '24-sonli Ixtisoslashgan Maktab',
+          message: 'Maktabimizni Yordamchi Med tizimiga ulash bo\'yicha shartnoma shartlarini bilmoqchi edik.',
+          status: 'NEW',
+        },
+        {
+          type: 'SUPPORT',
+          fromName: 'Malika Karimova',
+          fromContact: '+998935557788',
+          schoolName: '71-sonli Maktab',
+          message: 'Ota-onalar hisobotida AI tahlilini yuklashda sekinlashuv bo\'lyapti.',
+          status: 'IN_PROGRESS',
+        },
+      ],
+    });
+  }
+
+  // Sample payments
+  const existingPayment = await prisma.userPayment.findFirst();
+  if (!existingPayment) {
+    await prisma.userPayment.createMany({
+      data: [
+        {
+          transactionId: 'TXN-2026-0012',
+          userName: 'Dilorom Rahimova',
+          userRole: 'parent',
+          userPhone: '+998901234567',
+          studentName: 'Olimov Jasur',
+          schoolNumber: 71,
+          planName: 'Oylik obuna (Farzand monitoringi)',
+          amount: 150000,
+          provider: 'Payme',
+          status: 'completed',
+          expiryDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+          cardNumberMasked: '8600 •••• •••• 4321',
+        },
+        {
+          transactionId: 'TXN-2026-0013',
+          userName: 'Alisher Qodirov',
+          userRole: 'parent',
+          userPhone: '+998912345678',
+          studentName: 'Qodirova Madina',
+          schoolNumber: 12,
+          planName: 'Oylik obuna (Farzand monitoringi)',
+          amount: 150000,
+          provider: 'Click',
+          status: 'completed',
+          expiryDate: new Date(Date.now() + 28 * 24 * 60 * 60 * 1000),
+          cardNumberMasked: '9860 •••• •••• 8765',
+        },
+      ],
+    });
+  }
+
+  // Settings
+  await prisma.siteContent.upsert({
+    where: { key: 'system.credentialFormula' },
+    update: { value: JSON.stringify('{schoolNumber}maktab{login}') },
+    create: { key: 'system.credentialFormula', value: JSON.stringify('{schoolNumber}maktab{login}') },
+  });
+
   console.log('Seed muvaffaqiyatli yakunlandi!');
   console.log({
+    super_admin: { login: 'admin@yordamchi.med', password: 'superadmin123' },
     school71: { number: 71, name: school71.name },
     school71_admin: { login: 'admin71', role: 'SCHOOL_ADMIN', password: '123456' },
     school71_teacher: { login: 'umumi', password: '123456' },
